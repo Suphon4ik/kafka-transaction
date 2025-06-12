@@ -1,5 +1,6 @@
 package org.example.transferservice;
 
+import jakarta.persistence.EntityManagerFactory;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -13,6 +14,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
+import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -74,6 +76,12 @@ public class KafkaConfig {
     ) {
         return new KafkaTransactionManager<>(producerFactory);
     }
+
+    @Bean("transactionManager")
+    JpaTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
+        return new JpaTransactionManager(entityManagerFactory);
+    }
+
 
     @Bean
     RestTemplate restTemplate() {

@@ -4,9 +4,11 @@ import org.example.core.events.DepositRequestedEvent;
 import org.example.core.events.WithdrawalRequestedEvent;
 import org.example.transferservice.error.TransferServiceException;
 import org.example.transferservice.model.TransferRestModel;
+import org.example.transferservice.persistance.TransferEntity;
+import org.example.transferservice.persistance.TransferRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.BeanUtils;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -16,7 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.UncheckedIOException;
+import java.util.UUID;
 
 @Service
 public class TransferServiceImpl implements TransferService {
@@ -26,17 +28,20 @@ public class TransferServiceImpl implements TransferService {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final RestTemplate restTemplate;
     private final Environment environment;
+    private final TransferRepository transferRepository;
 
     public TransferServiceImpl(KafkaTemplate<String, Object> kafkaTemplate,
                                RestTemplate restTemplate,
-                               Environment environment) {
+                               Environment environment,
+                               TransferRepository transferRepository) {
         this.kafkaTemplate = kafkaTemplate;
         this.restTemplate = restTemplate;
         this.environment = environment;
+        this.transferRepository = transferRepository;
     }
 
     @Override
-    @Transactional
+    @Transactional("transactionManager")
     public boolean transfer(TransferRestModel transferRestModel) {
 
         WithdrawalRequestedEvent withdrawalRequestedEvent = new WithdrawalRequestedEvent(
@@ -51,6 +56,10 @@ public class TransferServiceImpl implements TransferService {
         );
 
         try {
+            TransferEntity transferEntity = new TransferEntity();
+            BeanUtils.copyProperties(transferRestModel, transferEntity);
+            transferEntity.setTransferId(UUID.randomUUID().toString());
+            transferRepository.save(transferEntity);
 
             kafkaTemplate.send(environment.getProperty(
                     "withdraw-money-topic", "withdraw-money-topic"
